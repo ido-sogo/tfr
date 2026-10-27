@@ -1,0 +1,1005 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>地域課題マップ | まちの交通レポート</title>
+
+  <meta
+    name="description"
+    content="道路や交通に関する問題を地図上に記録し、地域のみんなで共有するためのマップです。"
+  >
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <meta name="theme-color" content="#17181e">
+
+  <!-- 地図ライブラリ：Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <!-- このサイトのデザイン -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- アイコンライブラリ -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+  >
+</head>
+
+<body class="map-app">
+
+  <!-- ========================================
+       1. ヘッダー
+  ========================================= -->
+  <header class="app-header">
+
+    <a class="brand app-brand" href="index.html" aria-label="ホームへ戻る">
+      <div class="brand-icon" aria-hidden="true">
+        <i class="fa-solid fa-map-location-dot"></i>
+      </div>
+
+      <div class="brand-text">
+        <h1>まちの交通レポート</h1>
+        <p>LOCAL TRAFFIC REPORT</p>
+      </div>
+    </a>
+
+    <nav class="header-nav" aria-label="利用モード">
+      <button
+        type="button"
+        class="nav-button is-active"
+        id="view-mode-button"
+        aria-pressed="true"
+      >
+        <i class="fa-solid fa-eye"></i>
+        見る
+      </button>
+
+      <button
+        type="button"
+        class="nav-button"
+        id="propose-mode-button"
+        aria-pressed="false"
+      >
+        <i class="fa-solid fa-location-dot"></i>
+        提案する
+      </button>
+    </nav>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="icon-button is-hidden"
+        id="account-button"
+        aria-label="ログイン"
+        title="ログイン"
+      >
+        <i class="fa-solid fa-user"></i>
+      </button>
+
+      <button
+        type="button"
+        class="icon-button is-hidden"
+        id="admin-log-button"
+        aria-label="管理ログ"
+        title="管理ログ"
+      >
+        <i class="fa-solid fa-clipboard-list"></i>
+      </button>
+
+      <button
+        type="button"
+        class="icon-button is-hidden"
+        id="admin-invite-button"
+        aria-label="招待リンク管理"
+        title="招待リンク管理"
+      >
+        <i class="fa-solid fa-link"></i>
+      </button>
+
+      <button
+        type="button"
+        class="icon-button"
+        id="help-button"
+        aria-label="使い方"
+        title="使い方"
+      >
+        <i class="fa-regular fa-circle-question"></i>
+      </button>
+
+      <button
+        type="button"
+        class="primary-button"
+        id="header-create-button"
+      >
+        <i class="fa-solid fa-plus"></i>
+        投稿する
+      </button>
+    </div>
+
+  </header>
+
+
+  <!-- ========================================
+       2. メイン画面
+  ========================================= -->
+  <main class="app-main">
+
+    <!-- 地図エリア -->
+    <section
+      class="map-section"
+      id="map-section"
+      aria-label="地域の交通問題マップ"
+    >
+
+      <div
+        id="map"
+        class="map-container"
+        role="application"
+        aria-label="地図。投稿地点を選択したり、新しい地点を指定したりできます。"
+      ></div>
+
+      <!-- 地図上部の検索パネル -->
+      <div class="map-search-panel">
+
+        <form id="map-search-form" role="search">
+
+          <label for="map-search-input" class="visually-hidden">
+            地名・駅名・交差点を検索
+          </label>
+
+          <i class="fa-solid fa-magnifying-glass"></i>
+
+          <input
+            type="search"
+            id="map-search-input"
+            name="location"
+            placeholder="地名・駅名・交差点を検索..."
+            aria-describedby="map-search-note"
+            autocomplete="off"
+          >
+
+          <button type="submit" id="map-search-button">
+            検索
+          </button>
+
+        </form>
+
+        <p class="map-search-note" id="map-search-note">
+          個人宅などの住所や個人情報は入力しないでください。
+        </p>
+
+      </div>
+
+
+      <!-- 地図上の表示切り替え -->
+      <div class="map-controls">
+
+        <button
+          type="button"
+          id="locate-me-button"
+          class="map-control-button"
+          title="現在地付近を表示"
+          aria-label="現在地付近を表示"
+        >
+          <i class="fa-solid fa-location-crosshairs"></i>
+        </button>
+
+        <button
+          type="button"
+          id="reset-map-button"
+          class="map-control-button"
+          title="地図を初期位置に戻す"
+          aria-label="地図を初期位置に戻す"
+        >
+          <i class="fa-solid fa-house"></i>
+        </button>
+
+      </div>
+
+
+      <!-- 地図上の凡例 -->
+      <div class="map-legend" aria-label="投稿カテゴリの凡例">
+        <p class="legend-title">投稿カテゴリ</p>
+        <div class="legend-item"><span class="legend-dot legend-danger"></span>危険な場所</div>
+        <div class="legend-item"><span class="legend-dot legend-tobidashi"></span>飛び出し注意</div>
+        <div class="legend-item"><span class="legend-dot legend-signal"></span>信号・交差点</div>
+        <div class="legend-item"><span class="legend-dot legend-road"></span>道路・路面</div>
+        <div class="legend-item"><span class="legend-dot legend-sidewalk"></span>歩道・自転車</div>
+        <div class="legend-item"><span class="legend-dot legend-congestion"></span>渋滞</div>
+        <div class="legend-item"><span class="legend-dot legend-other"></span>その他</div>
+      </div>
+
+
+      <!-- 地点選択時に使用する情報表示領域 -->
+      <div
+        class="map-status"
+        id="map-status"
+        role="status"
+        aria-live="polite"
+      >
+        「提案する」モードで地図をタップすると、投稿地点を指定できます。
+      </div>
+
+      <button
+        type="button"
+        class="mobile-reports-button"
+        id="mobile-reports-button"
+        aria-expanded="false"
+        aria-controls="sidebar"
+      >
+        <i class="fa-solid fa-list" aria-hidden="true"></i>
+        投稿一覧を見る
+      </button>
+
+    </section>
+
+
+    <!-- 投稿一覧 -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- サイドバーの見出し -->
+      <div class="sidebar-header">
+
+        <div>
+          <p class="eyebrow">COMMUNITY REPORTS</p>
+          <h2>地域の気づき</h2>
+          <p class="sidebar-description">
+            まちの道路・交通について共有しよう。
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="icon-button mobile-sidebar-close-button"
+          id="mobile-sidebar-close-button"
+          aria-label="地図に戻る"
+        >
+          <i class="fa-solid fa-map" aria-hidden="true"></i>
+        </button>
+
+      </div>
+
+      <!-- 投稿検索 -->
+      <section class="report-search-section">
+
+        <label for="report-search-input" class="visually-hidden">
+          投稿を検索
+        </label>
+
+        <div class="report-search-box">
+
+          <i class="fa-solid fa-magnifying-glass"></i>
+
+          <input
+            type="search"
+            id="report-search-input"
+            placeholder="投稿・道路名を検索..."
+            autocomplete="off"
+          >
+
+        </div>
+
+      </section>
+
+
+      <!-- カテゴリフィルター -->
+      <section class="filter-section">
+
+        <h3 class="section-heading">カテゴリで絞り込む</h3>
+
+        <div class="category-filters" id="category-filters">
+
+          <button type="button" class="category-chip is-active" data-category="all" aria-pressed="true">すべて</button>
+          <button type="button" class="category-chip" data-category="danger" aria-pressed="false"><span class="filter-dot danger-dot"></span>危険な場所</button>
+          <button type="button" class="category-chip" data-category="tobidashi" aria-pressed="false"><span class="filter-dot tobidashi-dot"></span>飛び出し注意</button>
+          <button type="button" class="category-chip" data-category="signal" aria-pressed="false"><span class="filter-dot signal-dot"></span>信号・交差点</button>
+          <button type="button" class="category-chip" data-category="road" aria-pressed="false"><span class="filter-dot road-dot"></span>道路・路面</button>
+          <button type="button" class="category-chip" data-category="sidewalk" aria-pressed="false"><span class="filter-dot sidewalk-dot"></span>歩道・自転車</button>
+          <button type="button" class="category-chip" data-category="congestion" aria-pressed="false"><span class="filter-dot congestion-dot"></span>渋滞</button>
+          <button type="button" class="category-chip" data-category="other" aria-pressed="false"><span class="filter-dot other-dot"></span>その他</button>
+
+        </div>
+
+      </section>
+
+
+      <!-- 投稿一覧の操作 -->
+      <section class="report-list-section">
+
+        <div class="report-list-heading">
+
+          <h3 class="section-heading">投稿一覧</h3>
+
+          <label for="report-sort-select" class="visually-hidden">
+            投稿の並び順
+          </label>
+
+          <select id="report-sort-select">
+            <option value="newest">新着順</option>
+            <option value="oldest">古い順</option>
+            <option value="votes">投票数順</option>
+          </select>
+
+        </div>
+
+        <p class="result-count" id="report-result-count">
+          0件の投稿
+        </p>
+
+
+        <!-- JavaScriptで投稿カードを生成 -->
+        <div
+          class="report-list"
+          id="report-list"
+          aria-live="polite"
+          aria-busy="false"
+        >
+
+          <div class="empty-state" id="report-empty-state">
+
+            <div class="empty-state-icon">
+              <i class="fa-regular fa-map"></i>
+            </div>
+
+            <h4>まだ投稿がありません</h4>
+
+            <p>
+              気になる道路や交差点を見つけたら、
+              最初の投稿を作成してみましょう。
+            </p>
+
+            <button
+              type="button"
+              class="primary-button"
+              id="empty-create-button"
+            >
+              <i class="fa-solid fa-plus"></i>
+              最初の投稿を作成
+            </button>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- サイドバー下部 -->
+      <footer class="sidebar-footer">
+
+        <p>
+          <i class="fa-solid fa-circle-info"></i>
+          投稿は地域の状況を共有するための情報です。
+        </p>
+
+        <p class="footer-note">
+          個人情報や、他の人の安全を損なう内容は投稿しないでください。
+        </p>
+
+      </footer>
+
+    </aside>
+
+  </main>
+
+
+  <!-- ========================================
+       4. 投稿作成ダイアログ
+  ========================================= -->
+  <dialog
+    class="modal"
+    id="create-report-dialog"
+    aria-labelledby="create-report-title"
+  >
+
+    <div class="modal-header">
+
+      <div>
+        <p class="eyebrow">NEW REPORT</p>
+        <h2 id="create-report-title">交通問題を投稿</h2>
+      </div>
+
+      <button
+        type="button"
+        class="icon-button"
+        id="close-create-dialog-button"
+        aria-label="投稿画面を閉じる"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+    </div>
+
+
+    <form id="create-report-form">
+
+      <div class="form-body">
+
+        <!-- 問題のタイトル -->
+        <div class="form-group">
+
+          <label for="report-title">
+            タイトル <span class="required-label">必須</span>
+          </label>
+
+          <input
+            type="text"
+            id="report-title"
+            name="title"
+            maxlength="80"
+            placeholder="例：見通しが悪い交差点"
+            required
+          >
+
+          <p class="field-help">
+            何が問題なのか、短く具体的に書いてください。
+          </p>
+
+        </div>
+
+
+        <!-- カテゴリ -->
+        <div class="form-group">
+
+          <label for="report-category">カテゴリ</label>
+
+          <select id="report-category" name="category" required>
+            <option value="danger">危険な場所</option>
+            <option value="tobidashi">飛び出し注意</option>
+            <option value="signal">信号・交差点</option>
+            <option value="road">道路・路面</option>
+            <option value="sidewalk">歩道・自転車</option>
+            <option value="congestion">渋滞</option>
+            <option value="other">その他</option>
+          </select>
+
+        </div>
+
+
+        <!-- 詳細説明 -->
+        <div class="form-group">
+
+          <label for="report-description">
+            問題の説明 <span class="optional-label">任意</span>
+          </label>
+
+          <textarea
+            id="report-description"
+            name="description"
+            rows="5"
+            maxlength="1000"
+            placeholder="気づいたことがあれば入力してください（空欄でも投稿できます）。"
+          ></textarea>
+
+          <div class="field-footer">
+            <p class="field-help">
+              個人名や車両番号などは記載しないでください。
+            </p>
+
+            <span id="description-character-count">0 / 1000</span>
+          </div>
+
+        </div>
+
+
+        <!-- 場所 -->
+        <div class="form-group">
+
+          <label for="report-location">
+            場所・道路名
+          </label>
+
+          <input
+            type="text"
+            id="report-location"
+            name="location"
+            maxlength="120"
+            placeholder="例：○○交差点付近"
+          >
+
+          <p class="field-help">
+            「提案する」モードで地図をタップすると、投稿地点を指定できます。
+          </p>
+
+        </div>
+
+
+        <!-- 地点情報 -->
+        <div class="location-coordinate-fields">
+
+          <div class="form-group">
+
+            <label for="report-latitude">緯度</label>
+
+            <input
+              type="number"
+              id="report-latitude"
+              name="latitude"
+              step="any"
+              min="-90"
+              max="90"
+              placeholder="地図から自動入力"
+              readonly
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="report-longitude">経度</label>
+
+            <input
+              type="number"
+              id="report-longitude"
+              name="longitude"
+              step="any"
+              min="-180"
+              max="180"
+              placeholder="地図から自動入力"
+              readonly
+            >
+
+          </div>
+
+        </div>
+
+
+        <!-- 解決状況 -->
+        <div class="form-group">
+
+          <label for="report-status">状況</label>
+
+          <select id="report-status" name="status">
+            <option value="pending">未確認</option>
+            <option value="investigating">確認中</option>
+            <option value="resolved">解決済み</option>
+          </select>
+
+        </div>
+
+
+        <!-- 投稿時の注意 -->
+        <div class="notice-box">
+
+          <i class="fa-solid fa-shield-halved"></i>
+
+          <p>
+            投稿前に内容を確認してください。
+            緊急の危険がある場合は、このサイトへの投稿だけで済ませず、
+            必要に応じて警察や道路管理者などに連絡してください。
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="modal-footer">
+
+        <button
+          type="button"
+          class="secondary-button"
+          id="cancel-create-report-button"
+        >
+          キャンセル
+        </button>
+
+        <button
+          type="submit"
+          class="primary-button"
+          id="submit-report-button"
+        >
+          <i class="fa-solid fa-paper-plane"></i>
+          投稿する
+        </button>
+
+      </div>
+
+    </form>
+
+  </dialog>
+
+
+  <!-- ========================================
+       5. 投稿詳細ダイアログ
+  ========================================= -->
+  <dialog
+    class="modal detail-modal"
+    id="report-detail-dialog"
+    aria-labelledby="report-detail-title"
+  >
+
+    <div class="modal-header">
+
+      <div>
+        <p class="eyebrow">REPORT DETAILS</p>
+        <h2 id="report-detail-title">投稿の詳細</h2>
+      </div>
+
+      <button
+        type="button"
+        class="icon-button"
+        id="close-detail-dialog-button"
+        aria-label="詳細画面を閉じる"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+    </div>
+
+
+    <div class="detail-body" id="report-detail-content">
+
+      <!-- JavaScriptで選択した投稿の詳細を表示 -->
+
+    </div>
+
+
+    <div class="modal-footer">
+
+      <button
+        type="button"
+        class="secondary-button"
+        id="detail-back-button"
+      >
+        閉じる
+      </button>
+
+      <button
+        type="button"
+        class="primary-button"
+        id="detail-vote-button"
+      >
+        <i class="fa-solid fa-thumbs-up"></i>
+        同じ問題を確認
+      </button>
+
+    </div>
+
+  </dialog>
+
+
+  <!-- ========================================
+       6. 使い方ダイアログ
+  ========================================= -->
+  <dialog
+    class="modal help-modal"
+    id="help-dialog"
+    aria-labelledby="help-dialog-title"
+  >
+
+    <div class="modal-header">
+
+      <div>
+        <p class="eyebrow">HOW TO USE</p>
+        <h2 id="help-dialog-title">このサイトの使い方</h2>
+      </div>
+
+      <button
+        type="button"
+        class="icon-button"
+        id="close-help-dialog-button"
+        aria-label="使い方を閉じる"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+    </div>
+
+
+    <div class="help-content">
+
+      <article class="help-step">
+
+        <span class="help-step-number">01</span>
+
+        <div>
+          <h3>地図から場所を探す</h3>
+          <p>
+            地図を移動・拡大して、気になる道路や交差点を探します。
+          </p>
+        </div>
+
+      </article>
+
+
+      <article class="help-step">
+
+        <span class="help-step-number">02</span>
+
+        <div>
+          <h3>問題を投稿する</h3>
+          <p>
+            「提案する」モードで地図をタップして場所を選び、タイトル・カテゴリ・説明を入力します。
+          </p>
+        </div>
+
+      </article>
+
+
+      <article class="help-step">
+
+        <span class="help-step-number">03</span>
+
+        <div>
+          <h3>投稿を確認する</h3>
+          <p>
+            マーカーや投稿一覧から、問題の内容と場所を確認します。
+          </p>
+        </div>
+
+      </article>
+
+
+      <article class="help-step">
+
+        <span class="help-step-number">04</span>
+
+        <div>
+          <h3>地域の課題を共有する</h3>
+          <p>
+            同じ問題の投稿を確認し、状況の把握や改善の検討に役立てます。
+          </p>
+        </div>
+
+      </article>
+
+    </div>
+
+
+    <div class="modal-footer">
+
+      <button
+        type="button"
+        class="primary-button"
+        id="close-help-footer-button"
+      >
+        わかった
+      </button>
+
+    </div>
+
+  </dialog>
+
+  <dialog
+    class="modal"
+    id="account-dialog"
+    aria-labelledby="account-dialog-title"
+  >
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">ACCOUNT</p>
+        <h2 id="account-dialog-title">アカウント</h2>
+      </div>
+      <button
+        type="button"
+        class="icon-button"
+        id="close-account-dialog-button"
+        aria-label="アカウント画面を閉じる"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <form id="account-form">
+      <div class="form-body">
+        <div class="account-mode-tabs" id="account-mode-tabs" role="tablist" aria-label="アカウント操作">
+          <button type="button" class="account-mode-tab is-active" id="account-login-tab" role="tab" aria-selected="true">
+            ログイン
+          </button>
+          <button type="button" class="account-mode-tab" id="account-signup-tab" role="tab" aria-selected="false">
+            新規登録
+          </button>
+        </div>
+        <p class="account-current-user is-hidden" id="account-current-user"></p>
+        <div class="form-group" id="account-email-group">
+          <label for="account-email">メールアドレス</label>
+          <input
+            type="email"
+            id="account-email"
+            autocomplete="email"
+            maxlength="254"
+            placeholder="name@example.com"
+            required
+          >
+        </div>
+        <div class="form-group" id="account-password-group">
+          <label for="account-password">パスワード</label>
+          <div class="password-input-wrap">
+            <input
+              type="password"
+              id="account-password"
+              autocomplete="current-password"
+              minlength="8"
+              maxlength="72"
+              required
+            >
+            <button type="button" class="password-visibility-button" id="toggle-password-visibility" aria-label="パスワードを表示">
+              <i class="fa-regular fa-eye" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <p class="field-help is-hidden" id="password-requirement">
+          パスワードは8文字以上にしてください。
+        </p>
+        <div class="form-group is-hidden" id="account-password-confirm-group">
+          <label for="account-password-confirm">パスワード（確認）</label>
+          <div class="password-input-wrap">
+            <input
+              type="password"
+              id="account-password-confirm"
+              autocomplete="new-password"
+              minlength="8"
+              maxlength="72"
+            >
+            <button type="button" class="password-visibility-button" id="toggle-confirm-password-visibility" aria-label="確認用パスワードを表示">
+              <i class="fa-regular fa-eye" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <p class="field-help" id="account-message">
+          ログインすると、自分の投稿を削除できます。管理者は管理ログも確認できます。
+        </p>
+        <section class="claim-admin-section is-hidden" id="claim-admin-section" aria-labelledby="claim-admin-title">
+          <h3 id="claim-admin-title">管理者認証</h3>
+          <p class="field-help">
+            管理者認証パスワードを入力すると、このアカウントに管理機能を付与します。
+          </p>
+          <div class="form-group">
+            <label for="claim-admin-password">管理者認証パスワード</label>
+            <input
+              type="password"
+              id="claim-admin-password"
+              autocomplete="new-password"
+              maxlength="256"
+            >
+          </div>
+          <button type="button" class="secondary-button" id="claim-admin-button">
+            管理者として認証
+          </button>
+        </section>
+        <p class="account-feedback is-hidden" id="account-feedback" role="status" aria-live="polite"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="secondary-button is-hidden" id="sign-out-button">
+          ログアウト
+        </button>
+        <button type="button" class="secondary-button is-hidden" id="resend-confirmation-button">
+          確認メールを再送
+        </button>
+        <button type="button" class="secondary-button" id="reset-password-button">
+          パスワードを忘れた場合
+        </button>
+        <button type="submit" class="primary-button" id="sign-in-button">
+          ログイン
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog
+    class="modal invite-management-modal"
+    id="invite-management-dialog"
+    aria-labelledby="invite-management-title"
+  >
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">INVITE LINKS</p>
+        <h2 id="invite-management-title">投稿招待リンク</h2>
+      </div>
+      <button
+        type="button"
+        class="icon-button"
+        id="close-invite-management-button"
+        aria-label="招待リンク管理を閉じる"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="form-body">
+      <form class="invite-create-form" id="invite-create-form">
+        <div class="form-group">
+          <label for="invite-label">リンクの名前</label>
+          <input
+            type="text"
+            id="invite-label"
+            maxlength="80"
+            placeholder="例：自治会向け、イベント参加者用"
+          >
+        </div>
+        <button type="submit" class="primary-button" id="create-invite-button">
+          <i class="fa-solid fa-link" aria-hidden="true"></i>
+          招待リンクを発行
+        </button>
+      </form>
+      <p class="field-help">
+        リンクは無期限・複数回利用できます。受け取った人はアカウントなしで投稿できます。公開範囲に注意して共有してください。
+      </p>
+      <section class="generated-invite is-hidden" id="generated-invite" aria-live="polite">
+        <p class="invite-success-message">招待リンクを発行しました。このリンクは画面を閉じると再表示できません。</p>
+        <div class="invite-url-row">
+          <input type="text" id="generated-invite-url" readonly aria-label="発行した招待リンク">
+          <button type="button" class="secondary-button" id="copy-invite-link-button">コピー</button>
+        </div>
+      </section>
+      <div class="invite-list-heading">
+        <h3 class="section-heading">発行済みリンク</h3>
+        <button type="button" class="secondary-button" id="refresh-invites-button">更新</button>
+      </div>
+      <div class="invite-list" id="invite-list" aria-live="polite">
+        <p class="field-help">招待リンクを読み込んでいます。</p>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog
+    class="modal admin-log-modal"
+    id="admin-log-dialog"
+    aria-labelledby="admin-log-title"
+  >
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">ADMINISTRATION</p>
+        <h2 id="admin-log-title">投稿の削除ログ</h2>
+      </div>
+      <button
+        type="button"
+        class="icon-button"
+        id="close-admin-log-button"
+        aria-label="管理ログを閉じる"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="admin-log-list" id="admin-log-list" aria-live="polite">
+      <p class="field-help">ログを読み込んでいます。</p>
+    </div>
+  </dialog>
+
+
+  <!-- ========================================
+       7. 通知表示領域
+  ========================================= -->
+  <div
+    class="toast-container"
+    id="toast-container"
+    role="status"
+    aria-live="polite"
+    aria-atomic="true"
+  ></div>
+
+
+  <!-- ========================================
+       8. フッター情報
+  ========================================= -->
+  <footer class="app-footer">
+
+    <p>
+      © まちの交通レポート
+    </p>
+
+    <p>
+      地図データ：
+      <a
+        href="https://www.openstreetmap.org/copyright"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        OpenStreetMap contributors
+      </a>
+    </p>
+
+  </footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="map-config.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
