@@ -312,6 +312,7 @@ function updateAuthControls() {
   const accountButton = getElement("account-button");
   const adminLogButton = getElement("admin-log-button");
   const adminInviteButton = getElement("admin-invite-button");
+  const adminAccessButton = getElement("admin-access-button");
 
   accountButton?.classList.toggle("is-hidden", !supabaseClient);
   if (accountButton) {
@@ -321,6 +322,7 @@ function updateAuthControls() {
   }
   adminLogButton?.classList.toggle("is-hidden", !isCurrentUserAdmin);
   adminInviteButton?.classList.toggle("is-hidden", !isCurrentUserAdmin);
+  adminAccessButton?.classList.toggle("is-hidden", !isCurrentUserAdmin);
 }
 
 function openAccountDialog() {
@@ -401,7 +403,7 @@ function updateAccountDialog() {
   currentUserLabel?.classList.toggle("is-hidden", !signedIn);
   if (currentUserLabel) {
     currentUserLabel.textContent = currentUser
-      ? `${isCurrentUserAdmin ? "管理者としてログイン中" : "ログイン中"}: ${currentUser.email || currentUser.id}`
+      ? `${isCurrentUserAdmin ? "管理者としてログイン中" : "ログイン中"}: ${currentUser.email || "メール未設定"}（ユーザーID: ${currentUser.id}）`
       : "";
   }
   emailGroup?.classList.toggle("is-hidden", signedIn);
@@ -854,6 +856,127 @@ async function showAdminLogs() {
     failure.textContent = "管理ログを読み込めませんでした。データベース設定を確認してください。";
     list.appendChild(failure);
     showToast("管理ログを読み込めませんでした。", "error");
+  }
+}
+
+async function openAdminManagement() {
+  if (!isCurrentUserAdmin) {
+    showToast("管理者権限を管理する権限がありません。", "error");
+    return;
+  }
+
+  const dialog = getElement("admin-management-dialog");
+  if (dialog?.showModal && !dialog.open) dialog.showModal();
+  else dialog?.setAttribute("open", "");
+  await loadAdminList();
+}
+
+async function loadAdminList() {
+  const list = getElement("admin-list");
+  if (!list || !isCurrentUserAdmin) return;
+
+  list.replaceChildren();
+  const loading = document.createElement("p");
+  loading.className = "field-help";
+  loading.textContent = "管理者を読み込んでいます。";
+  list.appendChild(loading);
+
+  try {
+    const { data, error } = await supabaseClient.rpc("list_traffic_report_admins");
+    if (error) throw error;
+
+    list.replaceChildren();
+    if (!data || data.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "field-help";
+      empty.textContent = "登録済みの管理者がありません。";
+      list.appendChild(empty);
+      return;
+    }
+
+    data.forEach((admin) => {
+      const item = document.createElement("article");
+      item.className = "admin-list-item";
+
+      const title = document.createElement("h4");
+      title.textContent = admin.email || admin.user_id;
+
+      const granted = document.createElement("p");
+      granted.textContent = `付与日時: ${formatDate(admin.granted_at)}`;
+
+      item.append(title, granted);
+      if (admin.user_id !== currentUser?.id && data.length > 1) {
+        const revokeButton = document.createElement("button");
+        revokeButton.type = "button";
+        revokeButton.className = "danger-button";
+        revokeButton.textContent = "権限を剥奪";
+        revokeButton.addEventListener("click", () => {
+          void revokeAdmin(admin.user_id, admin.email || admin.user_id);
+        });
+        item.appendChild(revokeButton);
+      }
+      list.appendChild(item);
+    });
+  } catch (error) {
+    console.error("管理者一覧を読み込めませんでした:", error);
+    list.replaceChildren();
+    const failure = document.createElement("p");
+    failure.className = "account-feedback is-error";
+    failure.textContent = "管理者一覧を読み込めません。データベース設定を確認してください。";
+    list.appendChild(failure);
+  }
+}
+
+async function grantAdmin(event) {
+  event.preventDefault();
+  if (!isCurrentUserAdmin) {
+    showToast("管理者権限を付与する権限がありません。", "error");
+    return;
+  }
+
+  const input = getElement("admin-user-id");
+  const userId = input?.value.trim() || "";
+  if (!input?.reportValidity()) return;
+
+  const button = getElement("grant-admin-button");
+  if (button) button.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.rpc("grant_traffic_report_admin", {
+      p_user_id: userId
+    });
+    if (error) throw error;
+    if (data !== true) throw new Error("このユーザーはすでに管理者です。");
+
+    input.value = "";
+    showToast("管理者権限を付与しました。");
+    await loadAdminList();
+  } catch (error) {
+    console.error("管理者権限を付与できませんでした:", error);
+    showToast(error?.message || "管理者権限を付与できませんでした。", "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function revokeAdmin(userId, email) {
+  if (!isCurrentUserAdmin) {
+    showToast("管理者権限を剥奪する権限がありません。", "error");
+    return;
+  }
+  if (!window.confirm(`${email} の管理者権限を剥奪しますか？`)) return;
+
+  try {
+    const { data, error } = await supabaseClient.rpc("revoke_traffic_report_admin", {
+      p_user_id: userId
+    });
+    if (error) throw error;
+    if (data !== true) throw new Error("管理者権限を剥奪できませんでした。");
+
+    showToast("管理者権限を剥奪しました。");
+    await loadAdminList();
+  } catch (error) {
+    console.error("管理者権限を剥奪できませんでした:", error);
+    showToast(error?.message || "管理者権限を剥奪できませんでした。", "error");
   }
 }
 
@@ -1981,6 +2104,10 @@ function setupEventListeners() {
   onClick("close-admin-log-button", () => closeDialog("admin-log-dialog"));
   onClick("admin-invite-button", openInviteManagement);
   onClick("close-invite-management-button", () => closeDialog("invite-management-dialog"));
+  onClick("admin-access-button", openAdminManagement);
+  onClick("close-admin-management-button", () => closeDialog("admin-management-dialog"));
+  onClick("refresh-admins-button", loadAdminList);
+  getElement("admin-grant-form")?.addEventListener("submit", grantAdmin);
   onClick("refresh-invites-button", loadInviteList);
   onClick("copy-invite-link-button", copyGeneratedInvite);
 

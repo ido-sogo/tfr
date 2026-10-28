@@ -2352,7 +2352,8 @@ body.list-mode .report-card {
     width: min(680px, calc(100vw - 30px));
 }
 
-.invite-management-modal {
+.invite-management-modal,
+.admin-management-modal {
     width: min(680px, calc(100vw - 30px));
 }
 
@@ -2414,6 +2415,7 @@ body.list-mode .report-card {
     margin-top: 5px;
 }
 
+.admin-list,
 .invite-list {
     display: flex;
     flex-direction: column;
@@ -2422,6 +2424,7 @@ body.list-mode .report-card {
     overflow: auto;
 }
 
+.admin-list-item,
 .invite-list-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -2432,6 +2435,7 @@ body.list-mode .report-card {
     background: var(--surface-soft);
 }
 
+.admin-list-item h4,
 .invite-list-item h4 {
     grid-column: 1 / -1;
     margin: 0;
@@ -2439,6 +2443,7 @@ body.list-mode .report-card {
     font-size: 12px;
 }
 
+   .admin-list-item p,
 .invite-list-item p {
     margin: 0;
     color: var(--muted);
@@ -2453,11 +2458,24 @@ body.list-mode .report-card {
     color: var(--muted-light);
 }
 
+.admin-list-item .danger-button,
 .invite-revoke-button {
     grid-column: 2;
     grid-row: 2 / span 2;
     align-self: center;
     color: var(--danger);
+}
+
+.admin-list-item .danger-button {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+    min-height: 34px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--danger);
+    font-size: 11px;
 }
 
 .admin-log-list {

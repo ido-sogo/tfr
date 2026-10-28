@@ -294,14 +294,92 @@ begin
 end;
 $$;
 
+create or replace function public.list_traffic_report_admins()
+returns table(user_id uuid, email text, granted_at timestamptz)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select admins.user_id, users.email, admins.created_at
+  from public.traffic_report_admins as admins
+  join auth.users as users on users.id = admins.user_id
+  where public.is_traffic_report_admin()
+  order by admins.created_at, users.email;
+$$;
+
+create or replace function public.grant_traffic_report_admin(p_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  affected_rows integer;
+begin
+  if not public.is_traffic_report_admin() then
+    raise exception 'Administrator permission required';
+  end if;
+  if p_user_id is null then
+    raise exception 'A user ID is required';
+  end if;
+  if not exists (select 1 from auth.users where id = p_user_id) then
+    raise exception 'User not found';
+  end if;
+
+  insert into public.traffic_report_admins (user_id)
+  values (p_user_id)
+  on conflict (user_id) do nothing;
+  get diagnostics affected_rows = row_count;
+  return affected_rows = 1;
+end;
+$$;
+
+create or replace function public.revoke_traffic_report_admin(p_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  affected_rows integer;
+begin
+  if not public.is_traffic_report_admin() then
+    raise exception 'Administrator permission required';
+  end if;
+  if p_user_id is null then
+    raise exception 'A user ID is required';
+  end if;
+  if p_user_id = (select auth.uid()) then
+    raise exception 'You cannot revoke your own administrator access';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('traffic_report_admin_revoke'));
+  if (select count(*) from public.traffic_report_admins) <= 1 then
+    raise exception 'At least one administrator must remain';
+  end if;
+
+  delete from public.traffic_report_admins
+  where user_id = p_user_id;
+  get diagnostics affected_rows = row_count;
+  return affected_rows = 1;
+end;
+$$;
+
 revoke all on function public.create_traffic_report_invite(text) from public;
 revoke all on function public.validate_traffic_report_invite(text) from public;
 revoke all on function public.revoke_traffic_report_invite(uuid) from public;
 revoke all on function public.create_report_with_invite(text, text, text, text, text, double precision, double precision) from public;
+revoke all on function public.list_traffic_report_admins() from public;
+revoke all on function public.grant_traffic_report_admin(uuid) from public;
+revoke all on function public.revoke_traffic_report_admin(uuid) from public;
 grant execute on function public.create_traffic_report_invite(text) to authenticated;
 grant execute on function public.validate_traffic_report_invite(text) to anon, authenticated;
 grant execute on function public.revoke_traffic_report_invite(uuid) to authenticated;
 grant execute on function public.create_report_with_invite(text, text, text, text, text, double precision, double precision) to anon, authenticated;
+grant execute on function public.list_traffic_report_admins() to authenticated;
+grant execute on function public.grant_traffic_report_admin(uuid) to authenticated;
+grant execute on function public.revoke_traffic_report_admin(uuid) to authenticated;
 
 create or replace function public.log_traffic_report_deletion()
 returns trigger

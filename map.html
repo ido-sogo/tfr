@@ -104,6 +104,16 @@
 
       <button
         type="button"
+        class="icon-button is-hidden"
+        id="admin-access-button"
+        aria-label="管理者権限管理"
+        title="管理者権限管理"
+      >
+        <i class="fa-solid fa-user-shield"></i>
+      </button>
+
+      <button
+        type="button"
         class="icon-button"
         id="help-button"
         aria-label="使い方"
@@ -222,7 +232,7 @@
         role="status"
         aria-live="polite"
       >
-        「提案する」モードで地図をタップすると、投稿地点を指定できます。
+        地図をタップして投稿地点を選択できます。
       </div>
 
       <button
@@ -910,6 +920,56 @@
       </div>
       <div class="invite-list" id="invite-list" aria-live="polite">
         <p class="field-help">招待リンクを読み込んでいます。</p>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog
+    class="modal admin-management-modal"
+    id="admin-management-dialog"
+    aria-labelledby="admin-management-title"
+  >
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">ADMINISTRATION</p>
+        <h2 id="admin-management-title">管理者権限</h2>
+      </div>
+      <button
+        type="button"
+        class="icon-button"
+        id="close-admin-management-button"
+        aria-label="管理者権限画面を閉じる"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="form-body">
+      <form class="admin-grant-form" id="admin-grant-form">
+        <div class="form-group">
+          <label for="admin-user-id">管理者にするユーザーのID</label>
+          <input
+            type="text"
+            id="admin-user-id"
+            maxlength="36"
+            pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            required
+          >
+        </div>
+        <button type="submit" class="primary-button" id="grant-admin-button">
+          <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+          管理者権限を付与
+        </button>
+      </form>
+      <p class="field-help">
+        ユーザーIDは本人のアカウント画面から確認できる、ログイン用アカウントとは別の識別IDです。自分の権限はここでは剥奪できません。
+      </p>
+      <div class="invite-list-heading">
+        <h3 class="section-heading">登録済み管理者</h3>
+        <button type="button" class="secondary-button" id="refresh-admins-button">更新</button>
+      </div>
+      <div class="admin-list" id="admin-list" aria-live="polite">
+        <p class="field-help">管理者を読み込んでいます。</p>
       </div>
     </div>
   </dialog>
