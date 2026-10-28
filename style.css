@@ -834,60 +834,6 @@ a:hover {
     font-size: 10px;
 }
 
-/* ---------- 15. 投稿検索 ---------- */
-
-.report-search-section {
-    padding: 13px 16px 5px;
-}
-
-.report-search-box {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-
-    min-height: 42px;
-    padding: 0 12px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: #f8fafc;
-
-    transition:
-        border-color 160ms ease,
-        box-shadow 160ms ease,
-        background 160ms ease;
-}
-
-.report-search-box:focus-within {
-    border-color: #93c5fd;
-    background: #fff;
-    box-shadow: 0 0 0 3px rgb(37 99 235 / 8%);
-}
-
-.report-search-box>i {
-    color: #94a3b8;
-    font-size: 13px;
-}
-
-#report-search-input {
-    width: 100%;
-    min-width: 0;
-    height: 39px;
-    padding: 7px 0;
-
-    border: 0;
-    outline: 0;
-    background: transparent;
-
-    font-size: 11px;
-}
-
-#report-search-input:focus {
-    outline: none;
-    box-shadow: none;
-}
-
 /* ---------- 16. カテゴリフィルター ---------- */
 
 .filter-section {
@@ -1716,7 +1662,6 @@ body.list-mode .report-card {
     }
 
     .filter-section,
-    .report-search-section,
     .report-list-section {
         padding-right: 12px;
         padding-left: 12px;
@@ -1867,10 +1812,6 @@ body.list-mode .report-card {
 
     .stat-card strong {
         font-size: 19px;
-    }
-
-    .report-search-section {
-        padding: 10px 12px 4px;
     }
 
     .filter-section {

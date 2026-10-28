@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>まちの交通レポート | 地域の気づきを共有</title>
+  <title>松本交通レポート</title>
   <meta
     name="description"
     content="道路や交通の気づきを地域のみんなで共有する、まちの交通レポートです。"
@@ -19,13 +19,13 @@
 <body>
   <div class="home-screen" id="home-screen">
     <header class="home-header">
-      <a class="brand home-brand" href="index.html" aria-label="まちの交通レポート ホーム">
+      <a class="brand home-brand" href="index.html" aria-label="松本交通レポート ホーム">
         <span class="brand-icon" aria-hidden="true">
           <i class="fa-solid fa-map-location-dot"></i>
         </span>
         <span class="brand-text">
-          <strong>まちの交通レポート</strong>
-          <span>LOCAL TRAFFIC REPORT</span>
+          <strong>松本交通レポート</strong>
+          <span>MATSUMOTO TRAFFIC REPORT</span>
         </span>
       </a>
     </header>
@@ -33,7 +33,7 @@
     <main class="home-content">
       <section class="home-hero" aria-labelledby="home-title">
         <p class="eyebrow">YOUR COMMUNITY, YOUR VOICE</p>
-        <h1 id="home-title">まちの気づきを、<br>みんなで共有しよう。</h1>
+        <h1 id="home-title">松本の気づきを、<br>みんなで共有しよう。</h1>
         <p class="home-description">
           道路や交通で気になったことを地図に投稿し、地域のみんなで確認できます。
         </p>
@@ -42,7 +42,7 @@
       <nav class="home-actions" aria-label="サイトのメニュー">
         <a class="primary-button home-map-button" href="map.html">
           <i class="fa-solid fa-map" aria-hidden="true"></i>
-          地図を見る
+          地図で確認する
           <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
         </a>
         <!-- 将来のホーム画面メニューは、このnav内にリンクを追加してください。 -->
@@ -73,7 +73,7 @@
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
   <script src="supabase-config.js"></script>
   <script src="home.js"></script>
 </body>

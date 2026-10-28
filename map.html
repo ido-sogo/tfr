@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>地域課題マップ | まちの交通レポート</title>
+  <title>松本交通レポート</title>
 
   <meta
     name="description"
@@ -44,8 +44,8 @@
       </div>
 
       <div class="brand-text">
-        <h1>まちの交通レポート</h1>
-        <p>LOCAL TRAFFIC REPORT</p>
+        <h1>松本交通レポート</h1>
+        <p>MATSUMOTO TRAFFIC REPORT</p>
       </div>
     </a>
 
@@ -57,7 +57,7 @@
         aria-pressed="true"
       >
         <i class="fa-solid fa-eye"></i>
-        見る
+        閲覧モード
       </button>
 
       <button
@@ -67,7 +67,7 @@
         aria-pressed="false"
       >
         <i class="fa-solid fa-location-dot"></i>
-        提案する
+        投稿モード
       </button>
     </nav>
 
@@ -159,7 +159,7 @@
             type="search"
             id="map-search-input"
             name="location"
-            placeholder="地名・駅名・交差点を検索..."
+            placeholder="場所・投稿を検索..."
             aria-describedby="map-search-note"
             autocomplete="off"
           >
@@ -171,7 +171,6 @@
         </form>
 
         <p class="map-search-note" id="map-search-note">
-          個人宅などの住所や個人情報は入力しないでください。
         </p>
 
       </div>
@@ -264,29 +263,6 @@
         </button>
 
       </div>
-
-      <!-- 投稿検索 -->
-      <section class="report-search-section">
-
-        <label for="report-search-input" class="visually-hidden">
-          投稿を検索
-        </label>
-
-        <div class="report-search-box">
-
-          <i class="fa-solid fa-magnifying-glass"></i>
-
-          <input
-            type="search"
-            id="report-search-input"
-            placeholder="投稿・道路名を検索..."
-            autocomplete="off"
-          >
-
-        </div>
-
-      </section>
-
 
       <!-- カテゴリフィルター -->
       <section class="filter-section">
@@ -997,7 +973,7 @@
 
   </footer>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
   <script src="map-config.js"></script>
   <script src="supabase-config.js"></script>
   <script src="script.js"></script>

@@ -1176,7 +1176,7 @@ function isValidCoordinate(lat, lng) {
    ========================= */
 
 function getFilteredReports() {
-  const searchInput = getElement("report-search-input");
+  const searchInput = getElement("map-search-input");
   const sortSelect = getElement("report-sort-select");
 
   const query = (searchInput?.value || "").trim().toLowerCase();
@@ -1588,7 +1588,7 @@ async function handleCreateReport(event) {
   selectedReportId = report.id;
   activeCategory = "all";
 
-  const searchInput = getElement("report-search-input");
+  const searchInput = getElement("map-search-input");
   if (searchInput) searchInput.value = "";
 
   $$("#category-filters [data-category]").forEach((button) => {
@@ -2031,9 +2031,9 @@ function setupEventListeners() {
   onClick("toggle-password-visibility", () => togglePasswordVisibility("account-password", "toggle-password-visibility"));
   onClick("toggle-confirm-password-visibility", () => togglePasswordVisibility("account-password-confirm", "toggle-confirm-password-visibility"));
 
-  const reportSearch = getElement("report-search-input");
-  if (reportSearch) {
-    reportSearch.addEventListener("input", () => {
+  const unifiedSearch = getElement("map-search-input");
+  if (unifiedSearch) {
+    unifiedSearch.addEventListener("input", () => {
       renderMarkers();
       renderReportList();
     });
