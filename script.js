@@ -311,6 +311,7 @@ function showToast(message, type = "success") {
 function updateAuthControls() {
   const accountButton = getElement("account-button");
   const adminLogButton = getElement("admin-log-button");
+  const adminDeleteAllButton = getElement("admin-delete-all-button");
   const adminInviteButton = getElement("admin-invite-button");
   const adminAccessButton = getElement("admin-access-button");
 
@@ -321,6 +322,7 @@ function updateAuthControls() {
     accountButton.title = label;
   }
   adminLogButton?.classList.toggle("is-hidden", !isCurrentUserAdmin);
+  adminDeleteAllButton?.classList.toggle("is-hidden", !isCurrentUserAdmin);
   adminInviteButton?.classList.toggle("is-hidden", !isCurrentUserAdmin);
   adminAccessButton?.classList.toggle("is-hidden", !isCurrentUserAdmin);
 }
@@ -786,9 +788,14 @@ async function showAdminLogs() {
   else dialog.setAttribute("open", "");
 
   try {
+    const { error: pruneError } = await supabaseClient.rpc(
+      "prune_traffic_report_deletion_logs"
+    );
+    if (pruneError) throw pruneError;
+
     const { data, error } = await supabaseClient
       .from("traffic_report_deletion_logs")
-      .select("id, report_id, deleted_by_email, deleted_by, report_snapshot, deleted_at")
+      .select("id, report_id, deleted_by_email, deleted_by, report_snapshot, deleted_at, ip_address, user_agent")
       .order("deleted_at", { ascending: false })
       .limit(100);
 
@@ -816,6 +823,12 @@ async function showAdminLogs() {
 
       const date = document.createElement("p");
       date.textContent = `削除日時: ${formatDate(entry.deleted_at)}`;
+
+      const ipAddress = document.createElement("p");
+      ipAddress.textContent = `接続元IP: ${entry.ip_address || "取得できませんでした"}`;
+
+      const userAgent = document.createElement("p");
+      userAgent.textContent = `ブラウザー情報: ${entry.user_agent || "取得できませんでした"}`;
 
       const location = document.createElement("p");
       location.textContent = `場所: ${typeof snapshot.location === "string" && snapshot.location
@@ -845,7 +858,19 @@ async function showAdminLogs() {
       const reportId = document.createElement("p");
       reportId.textContent = `投稿ID: ${entry.report_id}`;
 
-      item.append(title, actor, date, category, status, location, description, coordinates, reportId);
+      item.append(
+        title,
+        actor,
+        date,
+        ipAddress,
+        userAgent,
+        category,
+        status,
+        location,
+        description,
+        coordinates,
+        reportId
+      );
       list.appendChild(item);
     });
   } catch (error) {
@@ -1440,6 +1465,44 @@ function canDeleteReport(report) {
     currentUser &&
     (isCurrentUserAdmin || report.createdBy === currentUser.id)
   );
+}
+
+async function deleteAllReports() {
+  if (!isCurrentUserAdmin || !supabaseClient) {
+    showToast("すべての投稿を削除する権限がありません。", "error");
+    return;
+  }
+
+  const reportCount = reports.length;
+  if (!window.confirm(
+    `Supabase上のすべての投稿を削除します（現在読み込まれている投稿: ${reportCount}件）。この操作は取り消せません。`
+  )) return;
+  if (window.prompt("実行するには「全件削除」と入力してください。") !== "全件削除") return;
+
+  const button = getElement("admin-delete-all-button");
+  if (button) button.disabled = true;
+
+  try {
+    const { data, error } = await supabaseClient.rpc("delete_all_traffic_reports");
+    if (error) throw error;
+    if (!Number.isSafeInteger(data) || data < 0) {
+      throw new Error("削除件数を確認できませんでした。");
+    }
+
+    reports = [];
+    selectedReportId = null;
+    if (getElement("report-detail-dialog")?.open) {
+      closeDialog("report-detail-dialog");
+    }
+    renderMarkers();
+    renderReportList();
+    showToast(`${data}件の投稿を削除しました。`);
+  } catch (error) {
+    console.error("すべての投稿を削除できませんでした:", error);
+    showToast(`すべての投稿を削除できませんでした: ${error.message}`, "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 async function deleteReport(id) {
@@ -2101,6 +2164,7 @@ function setupEventListeners() {
   onClick("resend-confirmation-button", resendConfirmationEmail);
   onClick("sign-out-button", handleSignOut);
   onClick("admin-log-button", showAdminLogs);
+  onClick("admin-delete-all-button", deleteAllReports);
   onClick("close-admin-log-button", () => closeDialog("admin-log-dialog"));
   onClick("admin-invite-button", openInviteManagement);
   onClick("close-invite-management-button", () => closeDialog("invite-management-dialog"));

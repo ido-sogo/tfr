@@ -36,8 +36,17 @@ create table if not exists public.traffic_report_deletion_logs (
   deleted_by uuid references auth.users(id) on delete set null,
   deleted_by_email text,
   report_snapshot jsonb not null,
-  deleted_at timestamptz not null default now()
+  deleted_at timestamptz not null default now(),
+  ip_address text,
+  user_agent text
 );
+
+alter table public.traffic_report_deletion_logs
+  add column if not exists ip_address text,
+  add column if not exists user_agent text;
+
+create index if not exists traffic_report_deletion_logs_deleted_at_idx
+  on public.traffic_report_deletion_logs (deleted_at desc);
 
 create extension if not exists pgcrypto with schema extensions;
 
@@ -366,6 +375,41 @@ begin
 end;
 $$;
 
+create or replace function public.delete_all_traffic_reports()
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  deleted_count bigint;
+begin
+  if not public.is_traffic_report_admin() then
+    raise exception 'Administrator permission required';
+  end if;
+
+  delete from public.traffic_reports;
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+create or replace function public.prune_traffic_report_deletion_logs()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_traffic_report_admin() then
+    raise exception 'Administrator permission required';
+  end if;
+
+  delete from public.traffic_report_deletion_logs
+  where deleted_at < now() - interval '90 days';
+end;
+$$;
+
 revoke all on function public.create_traffic_report_invite(text) from public;
 revoke all on function public.validate_traffic_report_invite(text) from public;
 revoke all on function public.revoke_traffic_report_invite(uuid) from public;
@@ -373,6 +417,8 @@ revoke all on function public.create_report_with_invite(text, text, text, text, 
 revoke all on function public.list_traffic_report_admins() from public;
 revoke all on function public.grant_traffic_report_admin(uuid) from public;
 revoke all on function public.revoke_traffic_report_admin(uuid) from public;
+revoke all on function public.delete_all_traffic_reports() from public;
+revoke all on function public.prune_traffic_report_deletion_logs() from public;
 grant execute on function public.create_traffic_report_invite(text) to authenticated;
 grant execute on function public.validate_traffic_report_invite(text) to anon, authenticated;
 grant execute on function public.revoke_traffic_report_invite(uuid) to authenticated;
@@ -380,6 +426,8 @@ grant execute on function public.create_report_with_invite(text, text, text, tex
 grant execute on function public.list_traffic_report_admins() to authenticated;
 grant execute on function public.grant_traffic_report_admin(uuid) to authenticated;
 grant execute on function public.revoke_traffic_report_admin(uuid) to authenticated;
+grant execute on function public.delete_all_traffic_reports() to authenticated;
+grant execute on function public.prune_traffic_report_deletion_logs() to authenticated;
 
 create or replace function public.log_traffic_report_deletion()
 returns trigger
@@ -387,18 +435,34 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  request_headers jsonb := coalesce(
+    nullif(current_setting('request.headers', true), ''),
+    '{}'
+  )::jsonb;
+  source_ip text;
 begin
+  source_ip := coalesce(
+    nullif(btrim(request_headers ->> 'cf-connecting-ip'), ''),
+    nullif(btrim(request_headers ->> 'x-real-ip'), ''),
+    nullif(btrim(split_part(coalesce(request_headers ->> 'x-forwarded-for', ''), ',', 1)), '')
+  );
+
   insert into public.traffic_report_deletion_logs (
     report_id,
     deleted_by,
     deleted_by_email,
-    report_snapshot
+    report_snapshot,
+    ip_address,
+    user_agent
   )
   values (
     old.id,
     (select auth.uid()),
     (select auth.jwt() ->> 'email'),
-    to_jsonb(old)
+    to_jsonb(old),
+    source_ip,
+    nullif(request_headers ->> 'user-agent', '')
   );
 
   return old;
@@ -411,6 +475,26 @@ drop trigger if exists traffic_reports_audit_delete on public.traffic_reports;
 create trigger traffic_reports_audit_delete
   after delete on public.traffic_reports
   for each row execute function public.log_traffic_report_deletion();
+
+create or replace function public.prune_traffic_report_deletion_logs_after_report_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  delete from public.traffic_report_deletion_logs
+  where deleted_at < now() - interval '90 days';
+  return null;
+end;
+$$;
+
+revoke all on function public.prune_traffic_report_deletion_logs_after_report_delete() from public;
+
+drop trigger if exists traffic_report_deletion_logs_retention on public.traffic_reports;
+create trigger traffic_report_deletion_logs_retention
+  after delete on public.traffic_reports
+  for each statement execute function public.prune_traffic_report_deletion_logs_after_report_delete();
 
 create or replace function public.increment_report_votes(target_report_id uuid)
 returns bigint
