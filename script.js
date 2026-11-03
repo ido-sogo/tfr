@@ -45,6 +45,7 @@ const CATEGORIES = {
   tobidashi: { label: "飛び出し注意", color: "#f97316", icon: "🚸" },
   signal: { label: "信号・交差点", color: "#e59b18", icon: "🚦" },
   road: { label: "道路・路面", color: "#64748b", icon: "🛣️" },
+  local_oneway: { label: "地域ルールの一方通行", color: "#0f766e", icon: "1️⃣" },
   sidewalk: { label: "歩道・自転車", color: "#0e9f6e", icon: "🚲" },
   congestion: { label: "渋滞", color: "#8b5cf6", icon: "🚗" },
   other: { label: "その他", color: "#3984e8", icon: "📍" }
@@ -177,6 +178,9 @@ function normalizeReport(report, index) {
     description: typeof report.description === "string"
       ? report.description.slice(0, CONFIG.maxDescriptionLength)
       : "",
+    direction: typeof report.direction === "string"
+      ? report.direction.trim().slice(0, 120)
+      : "",
     location: typeof report.location === "string" ? report.location : "",
     lat,
     lng,
@@ -245,6 +249,7 @@ function mapSupabaseReport(row, index) {
     title: row.title,
     category: row.category,
     description: row.description,
+    direction: row.direction,
     location: row.location,
     lat: row.latitude,
     lng: row.longitude,
@@ -1306,7 +1311,14 @@ function createPopupContent(report) {
   button.textContent = "詳細を見る";
   button.addEventListener("click", () => openReportDetail(report.id));
 
-  wrapper.append(title, categoryText, location, button);
+  wrapper.append(title, categoryText);
+  if (report.category === "local_oneway" && report.direction) {
+    const direction = document.createElement("p");
+    direction.className = "oneway-direction";
+    direction.textContent = `進行方向: ${report.direction}`;
+    wrapper.appendChild(direction);
+  }
+  wrapper.append(location, button);
   return wrapper;
 }
 
@@ -1337,6 +1349,7 @@ function getFilteredReports() {
     const searchable = [
       report.title,
       report.description,
+      report.direction,
       report.location,
       CATEGORIES[report.category]?.label
     ].join(" ").toLowerCase();
@@ -1431,6 +1444,14 @@ function createReportCard(report) {
   description.className = "report-card-description";
   description.textContent = report.description || "説明はありません。";
 
+  const direction = report.category === "local_oneway" && report.direction
+    ? document.createElement("p")
+    : null;
+  if (direction) {
+    direction.className = "report-card-direction";
+    direction.textContent = `進行方向: ${report.direction}`;
+  }
+
   const location = document.createElement("p");
   location.className = "report-card-location";
   location.textContent = `📍 ${report.location || "場所の説明なし"}`;
@@ -1445,7 +1466,9 @@ function createReportCard(report) {
   votes.textContent = `👍 ${report.votes || 0}`;
 
   footer.append(date, votes);
-  card.append(top, title, description, location, footer);
+  card.append(top, title, description);
+  if (direction) card.appendChild(direction);
+  card.append(location, footer);
 
   card.addEventListener("click", () => selectReport(report.id));
   card.addEventListener("keydown", (event) => {
@@ -1627,6 +1650,7 @@ function openCreateDialog(coordinates = null) {
       `${reportCoordinates.lat.toFixed(5)}, ${reportCoordinates.lng.toFixed(5)}`;
   }
 
+  updateOnewayDirectionField();
   updateCharacterCount();
 
   if (typeof dialog.showModal === "function") {
@@ -1661,6 +1685,7 @@ async function handleCreateReport(event) {
 
   const title = getElement("report-title")?.value.trim() || "";
   const category = getElement("report-category")?.value || "other";
+  const direction = getElement("report-oneway-direction")?.value.trim() || "";
   const description = getElement("report-description")?.value.trim() || "";
   const location = getElement("report-location")?.value.trim() || "";
   const status = getElement("report-status")?.value || "pending";
@@ -1691,6 +1716,16 @@ async function handleCreateReport(event) {
     return;
   }
 
+  if (category === "local_oneway" && !direction) {
+    showToast("一方通行の進行方向を目印で入力してください。", "error");
+    getElement("report-oneway-direction")?.focus();
+    return;
+  }
+  if (direction.length > 120) {
+    showToast("進行方向は120文字以内にしてください。", "error");
+    return;
+  }
+
   if (!isValidCoordinate(lat, lng)) {
     showToast("「提案する」モードで地図をタップして投稿場所を選んでください。", "error");
     return;
@@ -1700,6 +1735,7 @@ async function handleCreateReport(event) {
     id: createId(),
     title,
     category,
+    direction: category === "local_oneway" ? direction : "",
     description,
     location: location || `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
     lat,
@@ -1725,7 +1761,8 @@ async function handleCreateReport(event) {
         p_description: report.description,
         p_location: report.location,
         p_latitude: report.lat,
-        p_longitude: report.lng
+        p_longitude: report.lng,
+        p_direction: report.direction
       });
 
       if (error) throw error;
@@ -1748,6 +1785,7 @@ async function handleCreateReport(event) {
         .insert({
           title: report.title,
           category: report.category,
+          direction: report.direction,
           description: report.description,
           location: report.location,
           latitude: report.lat,
@@ -1831,6 +1869,10 @@ function openReportDetail(id) {
     };
 
     addLine("カテゴリ", `${category.icon} ${category.label}`);
+    if (report.category === "local_oneway") {
+      addLine("進行方向", report.direction || "方向の情報はありません。");
+      addLine("確認", "地域からの投稿情報です。現地の標識や規制内容を確認してください。");
+    }
     addLine("状態", STATUS_LABELS[report.status] || "未対応");
     addLine("場所", report.location || "場所の説明なし");
     addLine("投稿日時", formatDate(report.createdAt));
@@ -2068,6 +2110,18 @@ function setupCategoryFilters() {
   });
 }
 
+function updateOnewayDirectionField() {
+  const category = getElement("report-category");
+  const field = getElement("oneway-direction-group");
+  const direction = getElement("report-oneway-direction");
+  if (!category || !field || !direction) return;
+
+  const isOneway = category.value === "local_oneway";
+  field.classList.toggle("is-hidden", !isOneway);
+  direction.required = isOneway;
+  if (!isOneway) direction.value = "";
+}
+
 /* =========================
    文字数カウント
    ========================= */
@@ -2208,6 +2262,7 @@ function setupEventListeners() {
   if (createForm) {
     createForm.addEventListener("submit", handleCreateReport);
   }
+  getElement("report-category")?.addEventListener("change", updateOnewayDirectionField);
 
   const accountForm = getElement("account-form");
   if (accountForm) {

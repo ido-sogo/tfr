@@ -710,6 +710,12 @@ a:hover {
     font-size: 11px;
 }
 
+.map-popup .oneway-direction,
+.report-card-direction {
+    color: #0f766e;
+    font-weight: 800;
+}
+
 .popup-detail-button {
     display: block;
     width: 100%;
@@ -2706,6 +2712,11 @@ body.list-mode .report-card {
 .legend-road,
 .road-dot {
     background: #64748b;
+}
+
+.legend-oneway,
+.oneway-dot {
+    background: #0f766e;
 }
 
 .legend-sidewalk,

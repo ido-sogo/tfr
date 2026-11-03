@@ -2,8 +2,9 @@ create table if not exists public.traffic_reports (
   id uuid primary key default gen_random_uuid(),
   title text not null check (char_length(title) between 1 and 80),
   category text not null check (category in (
-    'danger', 'tobidashi', 'signal', 'road', 'sidewalk', 'congestion', 'other'
+    'danger', 'tobidashi', 'signal', 'road', 'local_oneway', 'sidewalk', 'congestion', 'other'
   )),
+  direction text not null default '',
   description text not null default '' check (char_length(description) <= 1000),
   location text not null default '' check (char_length(location) <= 120),
   latitude double precision not null check (latitude between -90 and 90),
@@ -18,6 +19,22 @@ create table if not exists public.traffic_reports (
 
 alter table public.traffic_reports
   add column if not exists created_by uuid references auth.users(id) on delete set null;
+
+alter table public.traffic_reports
+  add column if not exists direction text not null default '';
+
+alter table public.traffic_reports
+  drop constraint if exists traffic_reports_category_check,
+  add constraint traffic_reports_category_check check (category in (
+    'danger', 'tobidashi', 'signal', 'road', 'local_oneway', 'sidewalk', 'congestion', 'other'
+  ));
+
+alter table public.traffic_reports
+  drop constraint if exists traffic_reports_direction_check,
+  add constraint traffic_reports_direction_check check (
+    char_length(direction) <= 120
+    and (category <> 'local_oneway' or char_length(btrim(direction)) between 1 and 120)
+  );
 
 create table if not exists public.traffic_report_admins (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -135,7 +152,7 @@ create policy "Owners and admins can delete reports"
 
 revoke all on public.traffic_reports from anon, authenticated;
 grant select on public.traffic_reports to anon, authenticated;
-grant insert (title, category, description, location, latitude, longitude, created_by)
+grant insert (title, category, direction, description, location, latitude, longitude, created_by)
   on public.traffic_reports to authenticated;
 grant delete on public.traffic_reports to authenticated;
 
@@ -221,6 +238,10 @@ begin
 end;
 $$;
 
+drop function if exists public.create_report_with_invite(
+  text, text, text, text, text, double precision, double precision
+);
+
 create or replace function public.create_report_with_invite(
   p_token text,
   p_title text,
@@ -228,7 +249,8 @@ create or replace function public.create_report_with_invite(
   p_description text,
   p_location text,
   p_latitude double precision,
-  p_longitude double precision
+  p_longitude double precision,
+  p_direction text default ''
 )
 returns uuid
 language plpgsql
@@ -259,8 +281,12 @@ begin
   if p_title is null or char_length(btrim(p_title)) not between 1 and 80 then
     raise exception 'Title must be between 1 and 80 characters';
   end if;
-  if p_category not in ('danger', 'tobidashi', 'signal', 'road', 'sidewalk', 'congestion', 'other') then
+  if p_category not in ('danger', 'tobidashi', 'signal', 'road', 'local_oneway', 'sidewalk', 'congestion', 'other') then
     raise exception 'Invalid report category';
+  end if;
+  if char_length(coalesce(p_direction, '')) > 120
+    or (p_category = 'local_oneway' and char_length(btrim(coalesce(p_direction, ''))) not between 1 and 120) then
+    raise exception 'A valid one-way direction is required';
   end if;
   if char_length(coalesce(p_description, '')) > 1000 then
     raise exception 'Description must be 1000 characters or fewer';
@@ -276,6 +302,7 @@ begin
   insert into public.traffic_reports (
     title,
     category,
+    direction,
     description,
     location,
     latitude,
@@ -288,6 +315,7 @@ begin
   values (
     btrim(p_title),
     p_category,
+    coalesce(p_direction, ''),
     coalesce(p_description, ''),
     coalesce(p_location, ''),
     p_latitude,
@@ -413,7 +441,7 @@ $$;
 revoke all on function public.create_traffic_report_invite(text) from public;
 revoke all on function public.validate_traffic_report_invite(text) from public;
 revoke all on function public.revoke_traffic_report_invite(uuid) from public;
-revoke all on function public.create_report_with_invite(text, text, text, text, text, double precision, double precision) from public;
+revoke all on function public.create_report_with_invite(text, text, text, text, text, double precision, double precision, text) from public;
 revoke all on function public.list_traffic_report_admins() from public;
 revoke all on function public.grant_traffic_report_admin(uuid) from public;
 revoke all on function public.revoke_traffic_report_admin(uuid) from public;
@@ -422,7 +450,7 @@ revoke all on function public.prune_traffic_report_deletion_logs() from public;
 grant execute on function public.create_traffic_report_invite(text) to authenticated;
 grant execute on function public.validate_traffic_report_invite(text) to anon, authenticated;
 grant execute on function public.revoke_traffic_report_invite(uuid) to authenticated;
-grant execute on function public.create_report_with_invite(text, text, text, text, text, double precision, double precision) to anon, authenticated;
+grant execute on function public.create_report_with_invite(text, text, text, text, text, double precision, double precision, text) to anon, authenticated;
 grant execute on function public.list_traffic_report_admins() to authenticated;
 grant execute on function public.grant_traffic_report_admin(uuid) to authenticated;
 grant execute on function public.revoke_traffic_report_admin(uuid) to authenticated;

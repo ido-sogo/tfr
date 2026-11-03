@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>松本交通レポート</title>
+  <title>地域交通レポート</title>
 
   <meta
     name="description"
@@ -44,8 +44,8 @@
       </div>
 
       <div class="brand-text">
-        <h1>松本交通レポート</h1>
-        <p>MATSUMOTO TRAFFIC REPORT</p>
+        <h1>地域交通レポート</h1>
+        <p>COMMUNITY TRAFFIC REPORT</p>
       </div>
     </a>
 
@@ -229,6 +229,7 @@
         <div class="legend-item"><span class="legend-dot legend-tobidashi"></span>飛び出し注意</div>
         <div class="legend-item"><span class="legend-dot legend-signal"></span>信号・交差点</div>
         <div class="legend-item"><span class="legend-dot legend-road"></span>道路・路面</div>
+        <div class="legend-item"><span class="legend-dot legend-oneway"></span>地域ルールの一方通行</div>
         <div class="legend-item"><span class="legend-dot legend-sidewalk"></span>歩道・自転車</div>
         <div class="legend-item"><span class="legend-dot legend-congestion"></span>渋滞</div>
         <div class="legend-item"><span class="legend-dot legend-other"></span>その他</div>
@@ -296,6 +297,7 @@
           <button type="button" class="category-chip" data-category="tobidashi" aria-pressed="false"><span class="filter-dot tobidashi-dot"></span>飛び出し注意</button>
           <button type="button" class="category-chip" data-category="signal" aria-pressed="false"><span class="filter-dot signal-dot"></span>信号・交差点</button>
           <button type="button" class="category-chip" data-category="road" aria-pressed="false"><span class="filter-dot road-dot"></span>道路・路面</button>
+          <button type="button" class="category-chip" data-category="local_oneway" aria-pressed="false"><span class="filter-dot oneway-dot"></span>地域ルールの一方通行</button>
           <button type="button" class="category-chip" data-category="sidewalk" aria-pressed="false"><span class="filter-dot sidewalk-dot"></span>歩道・自転車</button>
           <button type="button" class="category-chip" data-category="congestion" aria-pressed="false"><span class="filter-dot congestion-dot"></span>渋滞</button>
           <button type="button" class="category-chip" data-category="other" aria-pressed="false"><span class="filter-dot other-dot"></span>その他</button>
@@ -450,11 +452,29 @@
             <option value="tobidashi">飛び出し注意</option>
             <option value="signal">信号・交差点</option>
             <option value="road">道路・路面</option>
+            <option value="local_oneway">地域ルールの一方通行</option>
             <option value="sidewalk">歩道・自転車</option>
             <option value="congestion">渋滞</option>
             <option value="other">その他</option>
           </select>
 
+        </div>
+
+        <div class="form-group is-hidden" id="oneway-direction-group">
+          <label for="report-oneway-direction">
+            進行方向 <span class="required-label">必須</span>
+          </label>
+          <input
+            type="text"
+            id="report-oneway-direction"
+            name="direction"
+            maxlength="120"
+            placeholder="例：○○駅側から△△公園側へ"
+            aria-describedby="oneway-direction-help"
+          >
+          <p class="field-help" id="oneway-direction-help">
+            道路の両端にある目印を使って入力してください。
+          </p>
         </div>
 
 
@@ -567,6 +587,7 @@
 
           <p>
             投稿前に内容を確認してください。
+            一方通行の投稿は地域からの情報です。実際の標識、時間帯、対象車両を現地で必ず確認してください。
             緊急の危険がある場合は、このサイトへの投稿だけで済ませず、
             必要に応じて警察や道路管理者などに連絡してください。
           </p>
